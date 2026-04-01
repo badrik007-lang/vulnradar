@@ -7,7 +7,9 @@ export default function Home() {
   const router = useRouter()
 
   const handleScan = () => {
-    if (url.trim()) router.push('/scan')
+    if (url.trim()) {
+      router.push(`/scan?url=${encodeURIComponent(url)}`)
+    }
   }
 
   return (

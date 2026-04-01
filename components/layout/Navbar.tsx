@@ -37,48 +37,52 @@ export default function Navbar() {
       </Link>
 
       {/* Nav Links */}
-      {[
-  { label: 'Dashboard', href: '/' },
-  { label: 'Scans', href: '/scan' },
-  { label: 'Reports', href: '/report' },
-  { label: 'Docs', href: '/docs' },
-].map((item) => (
-  <li key={item.label}>
-    <Link href={item.href} style={{
-      color: 'var(--text-secondary)',
-      textDecoration: 'none',
-      fontSize: '14px',
-      fontWeight: 500,
-    }}>
-      {item.label}
-    </Link>
-  </li>
-))}
+      <ul style={{ display: 'flex', gap: '32px', listStyle: 'none' }}>
+        {[
+          { label: 'Dashboard', href: '/' },
+          { label: 'Scans', href: '/scan' },
+          { label: 'Reports', href: '/report' },
+          { label: 'Docs', href: '/docs' },
+        ].map((item) => (
+          <li key={item.label}>
+            <Link href={item.href} style={{
+              color: 'var(--text-secondary)',
+              textDecoration: 'none',
+              fontSize: '14px',
+              fontWeight: 500,
+            }}>
+              {item.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
 
       {/* Buttons */}
       <div style={{ display: 'flex', gap: '12px' }}>
-        <button style={{
+        <Link href="/login" style={{
           background: 'transparent',
           border: '1px solid var(--border-default)',
           color: 'var(--text-primary)',
           padding: '8px 18px',
           borderRadius: '8px',
           fontSize: '13px', fontWeight: 500,
-          cursor: 'pointer', fontFamily: 'inherit',
+          textDecoration: 'none',
+          display: 'inline-block',
         }}>
           Sign in
-        </button>
-        <button style={{
+        </Link>
+        <Link href="/login" style={{
           background: 'var(--brand)',
           border: 'none',
           color: '#0D0D0D',
           padding: '8px 18px',
           borderRadius: '8px',
           fontSize: '13px', fontWeight: 700,
-          cursor: 'pointer', fontFamily: 'inherit',
+          textDecoration: 'none',
+          display: 'inline-block',
         }}>
           Get Started
-        </button>
+        </Link>
       </div>
     </nav>
   )
