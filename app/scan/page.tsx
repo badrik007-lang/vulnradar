@@ -1,8 +1,7 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { Suspense } from 'react'
 
 const severityColors: Record<string, string> = {
   critical: '#FF4444', high: '#FF8800', medium: '#FFB800', low: '#00FF9C', info: '#4DA6FF'
@@ -10,6 +9,37 @@ const severityColors: Record<string, string> = {
 const severityDims: Record<string, string> = {
   critical: 'rgba(255,68,68,0.1)', high: 'rgba(255,136,0,0.1)',
   medium: 'rgba(255,184,0,0.1)', low: 'rgba(0,255,156,0.1)', info: 'rgba(77,166,255,0.1)'
+}
+
+function ScanLine({ text, delay }: { text: string; delay: number }) {
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), delay)
+    return () => clearTimeout(t)
+  }, [delay])
+  if (!visible) return null
+  return (
+    <div style={{
+      color: 'var(--text-secondary)',
+      animation: 'fadeInLine 0.3s ease both',
+      lineHeight: '2',
+    }}>
+      <span style={{ color: 'var(--brand)', marginRight: '8px' }}>›</span>
+      {text}
+    </div>
+  )
+}
+
+function BlinkingCursor({ delay }: { delay: number }) {
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), delay)
+    return () => clearTimeout(t)
+  }, [delay])
+  if (!visible) return null
+  return (
+    <div style={{ color: 'var(--brand)', marginTop: '8px', animation: 'blink 1s infinite' }}>█</div>
+  )
 }
 
 function ScanResults() {
@@ -27,6 +57,8 @@ function ScanResults() {
 
   const runScan = async () => {
     setLoading(true)
+    setVulns([])
+    setSummary(null)
     try {
       const res = await fetch('/api/scan', {
         method: 'POST',
@@ -46,6 +78,16 @@ function ScanResults() {
 
   return (
     <div style={{ display: 'flex', paddingTop: '64px', minHeight: '100vh' }}>
+      <style>{`
+        @keyframes fadeInLine {
+          from { opacity: 0; transform: translateX(-8px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+      `}</style>
 
       {/* SIDEBAR */}
       <aside style={{
@@ -82,7 +124,12 @@ function ScanResults() {
         {/* SCAN TARGET BAR */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '16px 20px', marginBottom: '28px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ width: '10px', height: '10px', background: loading ? '#FFB800' : 'var(--brand)', borderRadius: '50%', boxShadow: `0 0 8px ${loading ? '#FFB800' : 'var(--brand)'}` }} />
+            <div style={{
+              width: '10px', height: '10px',
+              background: loading ? '#FFB800' : 'var(--brand)',
+              borderRadius: '50%',
+              boxShadow: `0 0 8px ${loading ? '#FFB800' : 'var(--brand)'}`,
+            }} />
             <div>
               <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '14px' }}>{url || 'No URL provided'}</div>
               <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace' }}>
@@ -100,12 +147,36 @@ function ScanResults() {
           </div>
         </div>
 
-        {/* LOADING STATE */}
+        {/* TERMINAL LOADING */}
         {loading && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px', gap: '20px' }}>
-            <div style={{ width: '48px', height: '48px', border: '3px solid var(--border-subtle)', borderTop: '3px solid var(--brand)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-            <div style={{ fontSize: '14px', color: 'var(--text-secondary)', fontFamily: 'JetBrains Mono, monospace' }}>Scanning {url}...</div>
-            <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+          <div style={{
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: '16px',
+            padding: '40px',
+            fontFamily: 'JetBrains Mono, monospace',
+          }}>
+            {/* macOS dots */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid var(--border-subtle)' }}>
+              <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#FF5F57', flexShrink: 0 }} />
+              <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#FFBD2E', flexShrink: 0 }} />
+              <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#28C840', flexShrink: 0 }} />
+              <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>vulnradar — scan</span>
+            </div>
+
+            {/* Terminal output */}
+            <div style={{ fontSize: '13px' }}>
+              <div style={{ color: 'var(--text-muted)', lineHeight: '2' }}>
+                $ vulnradar scan <span style={{ color: 'var(--brand)' }}>{url}</span>
+              </div>
+              <ScanLine text="Initializing scan engine..." delay={200} />
+              <ScanLine text="Resolving domain..." delay={700} />
+              <ScanLine text="Checking HTTP security headers..." delay={1200} />
+              <ScanLine text="Analyzing response signatures..." delay={1800} />
+              <ScanLine text="Running CVE cross-reference..." delay={2400} />
+              <ScanLine text="Generating risk score..." delay={3000} />
+              <BlinkingCursor delay={3500} />
+            </div>
           </div>
         )}
 
@@ -128,9 +199,10 @@ function ScanResults() {
                   borderRadius: '12px', padding: '20px',
                   cursor: 'pointer',
                   opacity: filter === card.sev || filter === 'all' ? 1 : 0.5,
+                  transition: 'opacity 0.2s',
                 }}>
                   <div style={{ fontSize: '32px', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace', color: severityColors[card.sev], lineHeight: 1, marginBottom: '6px' }}>
-                    {summary?.[card.sev] || 0}
+                    {summary?.[card.sev] ?? 0}
                   </div>
                   <div style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)' }}>{card.label}</div>
                 </div>
@@ -145,7 +217,9 @@ function ScanResults() {
                 </div>
                 <div>
                   <div style={{ fontSize: '14px', fontWeight: 600 }}>Risk Score / 10</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{summary.riskScore >= 7 ? 'High Risk — Immediate action required' : summary.riskScore >= 4 ? 'Medium Risk — Fix soon' : 'Low Risk — Looking good!'}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                    {summary.riskScore >= 7 ? 'High Risk — Immediate action required' : summary.riskScore >= 4 ? 'Medium Risk — Fix soon' : 'Low Risk — Looking good!'}
+                  </div>
                 </div>
               </div>
             )}
@@ -153,7 +227,14 @@ function ScanResults() {
             {/* FILTER TABS */}
             <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '10px', padding: '4px', width: 'fit-content', marginBottom: '16px' }}>
               {['all', 'critical', 'high', 'medium', 'low', 'info'].map((f) => (
-                <button key={f} onClick={() => setFilter(f)} style={{ padding: '7px 16px', borderRadius: '7px', fontSize: '13px', fontWeight: 500, color: filter === f ? 'var(--text-primary)' : 'var(--text-secondary)', background: filter === f ? 'var(--bg-elevated)' : 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textTransform: 'capitalize' }}>
+                <button key={f} onClick={() => setFilter(f)} style={{
+                  padding: '7px 16px', borderRadius: '7px',
+                  fontSize: '13px', fontWeight: 500,
+                  color: filter === f ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  background: filter === f ? 'var(--bg-elevated)' : 'transparent',
+                  border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                  textTransform: 'capitalize',
+                }}>
                   {f}
                 </button>
               ))}
@@ -171,16 +252,32 @@ function ScanResults() {
                 <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 120px 80px 100px', gap: '16px', padding: '12px 20px', borderBottom: '1px solid var(--border-subtle)', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: 'JetBrains Mono, monospace' }}>
                   <span>#</span><span>Vulnerability</span><span>Severity</span><span>CVSS</span><span>Action</span>
                 </div>
-
                 {filtered.map((vuln, i) => (
                   <div key={vuln.id}>
-                    <div onClick={() => setExpanded(expanded === vuln.id ? null : vuln.id)} style={{ display: 'grid', gridTemplateColumns: '40px 1fr 120px 80px 100px', gap: '16px', padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)', alignItems: 'center', cursor: 'pointer', background: expanded === vuln.id ? 'var(--bg-elevated)' : 'transparent' }}>
+                    <div onClick={() => setExpanded(expanded === vuln.id ? null : vuln.id)} style={{
+                      display: 'grid', gridTemplateColumns: '40px 1fr 120px 80px 100px',
+                      gap: '16px', padding: '16px 20px',
+                      borderBottom: '1px solid var(--border-subtle)',
+                      alignItems: 'center', cursor: 'pointer',
+                      background: expanded === vuln.id ? 'var(--bg-elevated)' : 'transparent',
+                      transition: 'background 0.15s',
+                    }}>
                       <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace' }}>0{i + 1}</span>
                       <div>
                         <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '3px' }}>{vuln.title}</div>
                         <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'JetBrains Mono, monospace' }}>{vuln.location}</div>
                       </div>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '99px', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'JetBrains Mono, monospace', background: severityDims[vuln.severity], color: severityColors[vuln.severity], border: `1px solid ${severityColors[vuln.severity]}33`, width: 'fit-content' }}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '5px',
+                        padding: '4px 10px', borderRadius: '99px',
+                        fontSize: '11px', fontWeight: 600,
+                        textTransform: 'uppercase', letterSpacing: '0.06em',
+                        fontFamily: 'JetBrains Mono, monospace',
+                        background: severityDims[vuln.severity],
+                        color: severityColors[vuln.severity],
+                        border: `1px solid ${severityColors[vuln.severity]}33`,
+                        width: 'fit-content',
+                      }}>
                         ● {vuln.severity}
                       </span>
                       <span style={{ fontSize: '13px', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace', color: severityColors[vuln.severity] }}>{vuln.cvss}</span>
@@ -213,7 +310,11 @@ function ScanResults() {
 
 export default function ScanPage() {
   return (
-    <Suspense fallback={<div style={{ paddingTop: '64px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', color: 'var(--text-secondary)' }}>Loading...</div>}>
+    <Suspense fallback={
+      <div style={{ paddingTop: '64px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', color: 'var(--text-secondary)', fontFamily: 'JetBrains Mono, monospace' }}>
+        Loading...
+      </div>
+    }>
       <ScanResults />
     </Suspense>
   )
